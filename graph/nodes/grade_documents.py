@@ -1,11 +1,8 @@
 from typing import Any,Dict
-
-from sympy import true
-
 from graph.chains.retrieval_grader import  retrieval_grader
 from graph.state import GraphState
 
-def graph_state(state:GraphState) -> Dict[str,Any]:
+def grade_documents(state:GraphState) -> Dict[str,Any]:
     """
     Determines whether the retrieved documents are relevant to the question
     If any document is not relevant, we will set a flag to run web search
@@ -34,8 +31,9 @@ def graph_state(state:GraphState) -> Dict[str,Any]:
         if grade.lower() == "yes":
             print("----grade score yes")
             filtered_documents.append(d)
-        else
+        else :
             print("----grade score no")
             web_search = True
             continue
+
         return {"question":question,"documents":filtered_documents,"web_search":web_search}
