@@ -1,39 +1,47 @@
+import os
 from dotenv import load_dotenv
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import WebBaseLoader
 from langchain_community.vectorstores import Chroma
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 
+os.environ["USER_AGENT"] = "agentic-rag-orchestrator/1.0"
 load_dotenv()
 
-urls = [
-    "https://lilianweng.github.io/posts/2023-06-23-agent/",
-    "https://lilianweng.github.io/posts/2023-03-15-prompt-engineering/",
-    "https://lilianweng.github.io/posts/2023-10-25-adv-attack-llm/",
-]
+PERSIST_DIR = "./chroma_db"
 
-docs = [WebBaseLoader(url).load() for url in urls]
+embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
-docs_list = [item for sublist in docs for item in sublist]
+if os.path.exists(PERSIST_DIR) and os.listdir(PERSIST_DIR):
+    print("Mevcut Chroma veritabanı yükleniyor...")
+    vectorstore = Chroma(
+        collection_name="rag",
+        persist_directory=PERSIST_DIR,
+        embedding_function=embeddings
+    )
+else:
+    print("Yeni Chroma veritabanı oluşturuluyor ve veriler işleniyor...")
+    urls = [
+        "https://lilianweng.github.io/posts/2023-06-23-agent/",
+        "https://lilianweng.github.io/posts/2023-03-15-prompt-engineering/",
+        "https://lilianweng.github.io/posts/2023-10-25-adv-attack-llm/",
+    ]
 
-text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
-    chunk_size=250,
-    chunk_overlap=0
-)
+    docs = [WebBaseLoader(url).load() for url in urls]
+    docs_list = [item for sublist in docs for item in sublist]
 
-splits = text_splitter.split_documents(docs_list)
+    text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
+        chunk_size=250,
+        chunk_overlap=0
+    )
 
-vectorstore = Chroma.from_documents(
-    documents=splits,
-    collection_name="rag",
-    embedding=GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001"),
-    persist_directory="./.choroma"
-)
+    splits = text_splitter.split_documents(docs_list)
 
-retriver = Chroma(
-    collection_name="rag",
-    persist_directory="./.choroma",
-    embedding_function=GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
-).as_retriever()
+    vectorstore = Chroma.from_documents(
+        documents=splits,
+        collection_name="rag",
+        embedding=embeddings,
+        persist_directory=PERSIST_DIR
+    )
 
-
+retriever = vectorstore.as_retriever()
